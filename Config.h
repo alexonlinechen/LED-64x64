@@ -69,7 +69,7 @@ int GIF_R_name = 1 ;  //隨機GIF檔名參數
 int gifcount = 3 ;
 int random_gif_no = 10 ;
 int random_min = 30 ; //隨機模式的間隔時間
-int gifdelay = 20 ;
+int gifdelay = 150 ;
 
 bool GifClock = false;   // gif 時間模式 
 bool GifRandom = false ;   // gif 隨機模式 

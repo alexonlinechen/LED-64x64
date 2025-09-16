@@ -19,14 +19,13 @@ Ticker display_ticker;
 #define P_OE 2
 
 PxMATRIX display(64,64,P_LAT, P_OE,P_A,P_B,P_C,P_D);
-//PxMATRIX display(64,64,P_LAT, P_OE,P_A,P_B,P_C,P_D,P_E);
 
 
-// ISR for display refresh
-void display_updater()
-{
-display.display(10);
-}
+
+
+void display_updater(){
+     display.display();
+    }
 
 
 void setup() {
@@ -72,8 +71,6 @@ void setup() {
 
   ShowIP(); //顯示IP
   
-
-
   delay(1000);
   GetTime();
   savedata();
@@ -84,5 +81,5 @@ void loop() {
 server.handleClient();   
 SwitchMode();
 TimeCheck();
-
+display.showBuffer(); 
 }

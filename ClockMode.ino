@@ -48,7 +48,9 @@ void ClockMode1(){
 if ( millis() - last_H_Time > 60000){   //間隔20秒顯示一次 避免閃爍
 GetTime();
 
-
+  // 在繪圖前，最好先清空緩衝區，以避免殘影
+  display.fillScreen(display.color565(0, 0, 0)); 
+  
 //時間H   變化/動畫效果
    if( tempH != H){
    for(int i=-20;i<21;i++){
@@ -58,7 +60,7 @@ GetTime();
       tempH = H;    
          }
       }    
-      
+     
      showbigbitnumber(tempH,12,20,2,20,hsv2rgb(hueh, saturation, value));  
      last_H_Time = millis();
   } 
@@ -84,11 +86,14 @@ if ( millis() - last_M_Time > 25000){
       delay(3);
       tempM = M;
            }
-          }
+         }
+
+  
      showbigbitnumber(tempM,12,20,36,20,hsv2rgb(huem, saturation, value));
      last_M_Time = millis();
    
-           }      
+           }  
+               
          }
 
 

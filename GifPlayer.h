@@ -371,21 +371,10 @@ class GifPlayer {
       }
       // Don't clear matrix screen for these disposal methods
       if ((prevDisposalMethod != DISPOSAL_NONE) && (prevDisposalMethod != DISPOSAL_LEAVE)) {
-        //backgroundLayer.fillScreen({ 0, 0, 0 });
+        
        //  display.clearDisplay();
+      //  display.fillScreen(display.color565(0, 0, 0)); 
        
-       if(GifClock) {
-            //清除每一偵播放區域(64*50)的圖片 避免圖片重疊
-              for (int x = 0; x<64; x++) {
-              for (int y = 14; y<64; y++) {
-              display.drawPixel(x,y,display.color565(0,0,0));
-                            }
-                             }      
-                     }
-        else {
-             display.clearDisplay();            
-             }
-
       }
 
       // Process previous disposal method
@@ -480,8 +469,9 @@ class GifPlayer {
         frameDelay = 1;
       }
 
-       delay(gifdelay *10);   
-      return gifdelay *10;
+     // 控制播放下一偵的時間
+      delay(gifdelay);          
+      return frameDelay *10;
     }
     // parseTableBasedImage
 
@@ -665,7 +655,6 @@ the_end:
 
       // Image data is decompressed, now display portion of image affected by frame
 
-     // CRGB color;
       int yOffset, pixel;
       for (int y = tbiImageY; y < tbiHeight + tbiImageY; y++) {
         yOffset = y * MATRIX_WIDTH;
@@ -673,11 +662,11 @@ the_end:
           // Get the next pixel
           pixel = imageData[yOffset + x];
 
-          // Check pixel transparency
-          if (pixel == transparentColorIndex) {
-            continue;
-          }
 
+          // Check pixel transparency
+          //if (pixel == transparentColorIndex) {     
+         // return;
+         // }
     
            uint8_t r, g, b;
           // Pixel not transparent so get color from palette
@@ -685,31 +674,18 @@ the_end:
           g = gifPalette[pixel].Green;
           b = gifPalette[pixel].Blue;
 
-          // Draw the pixel
-          //backgroundLayer.drawPixel(x, y, color);
-#if 0
-    Serial.print(x);
-    Serial.print(F(" "));
-    Serial.print(y);
-    Serial.print(F(" > "));
-    Serial.println(color.r*65536+color.g*256+color.b, HEX);
 
-#endif
-  //  display.setPassThruColor(r*65536+g*256+b);
 
   //Gif 時鐘模式下 偏移Y
   if(GifClock)display.drawPixel(x, y+14, display.color565(r,g,b));
   else display.drawPixel(x, y, display.color565(r,g,b));
 
-   
-    
- //   display.setPassThruColor();
-    //matrixleds[XY(x,y)] = color;
         }
+          yield();
       }
-      //// Make animation frame visible
-      //backgroundLayer.swapBuffers();
 
+  //一次性顯示圖片  減少閃爍
+  display.showBuffer();   
       
     }
 

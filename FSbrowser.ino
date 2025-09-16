@@ -1,8 +1,4 @@
 
-#define USE_LITTLEFS
-
-
-
 void replyOK() {
   server.send(200, FPSTR(TEXT_PLAIN), "");
 }
