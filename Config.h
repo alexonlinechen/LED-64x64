@@ -40,6 +40,7 @@ int huew = 180;
 int hueb = 180;
 
 int randomMode = 1 ;
+int lastRandomMode = -1; // 宣告在全域，用來記錄上一次的模式
 
 //固定顯示 時間開始/結束參數
 int start_H = 0;
@@ -73,11 +74,13 @@ int gifdelay = 150 ;
 
 bool GifClock = false;   // gif 時間模式 
 bool GifRandom = false ;   // gif 隨機模式 
+static bool ModefirstRun = true;    // 用來標記模式是否初始化
 
 
 uint8_t saturation = 100;//饱和度
 uint8_t value = 100;//明度
 bool colon = true;//冒号
+
 
 int  H;
 int  M;

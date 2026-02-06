@@ -29,9 +29,34 @@
     Serial.println(F("大時間 + Gif模式")); 
      });
 
+    server.on("/pacmanmode", HTTP_POST, []() {  
+    display.clearDisplay();   
+    ModefirstRun = true;  
+    Mode = 5;
+    Serial.println(F("Pacman 小精靈模式")); 
+    server.send(200, "text/plain", "OK");
+    });
+
+
+    server.on("/Tetrisclock", HTTP_POST, []() {  
+    display.clearDisplay();   
+    ModefirstRun = true;  
+    Mode = 6;
+    Serial.println(F("俄羅斯方塊模式")); 
+    server.send(200, "text/plain", "OK");
+    });
+
+     server.on("/Marioclock", HTTP_POST, []() {  
+    display.clearDisplay();   
+    ModefirstRun = true;  
+    Mode = 7;
+    Serial.println(F("瑪利歐模式")); 
+    server.send(200, "text/plain", "OK");
+    });  
+
     server.on("/randommode", HTTP_POST, []() {   
     display.clearDisplay();  
-    Mode = 5; 
+    Mode = 8; 
     Serial.println(F("隨機模式")); 
     }); 
 

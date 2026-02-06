@@ -14,9 +14,24 @@ void SwitchMode(){
       case 4:
             ClockMode4();      
       break;
+      
       case 5:
-            ClockMode5();      
-      break;                       
+            PacmanMode();                                    
+      break;        
+
+      case 6:
+            TetrisMode();                              
+      break;   
+
+      case 7:
+            MarioMode();                            
+      break;  
+      
+      case 8:
+           ClockMode5();  
+      break;          
+
+                     
       }    
     } 
 
@@ -32,10 +47,10 @@ void GetTime(){
     currentMonth = tm.tm_mon + 1 ;  //取得月份
     monthDay = tm.tm_mday;          //取得日期
 
- Serial.print(F("時間: ")); 
-  Serial.print(H); 
-   Serial.print(F(":")); 
-     Serial.println(M); 
+// Serial.print(F("時間: ")); 
+ // Serial.print(H); 
+ //  Serial.print(F(":")); 
+ //    Serial.println(M); 
    }
 
 /// ####  時鐘顯示模式   ####
@@ -243,6 +258,16 @@ if ( millis() - lastTime > 30000){
  //隨機模式
 void ClockMode5(){
 
+  // 針對pacman模式 初始化
+  if (randomMode != lastRandomMode) {
+    if (randomMode == 5) {
+      ModefirstRun = true; // 只要切換到模式 5，就強制重置初始化標記
+    }
+    lastRandomMode = randomMode; // 更新紀錄
+  }
+
+
+   
   switch(randomMode){
       case 1:
             ClockMode1();
@@ -256,14 +281,24 @@ void ClockMode5(){
       
       case 4:     
            ClockMode4();    
-      break;                     
+      break; 
+
+      case 5:              
+           PacmanMode(); 
+      break;  
+
+      case 6:              
+           TetrisMode(); 
+      break;  
+                          
       default:
            ClockMode1();
       } 
       
 if ( millis() - randomTime > random_min*60000){    //間隔 - 分鐘顯示時間
 
-   randomMode = random(1, 5);
+
+   randomMode = random(1, 8);
    Serial.print(F("切換隨機模式："));
    Serial.println(randomMode);
    display.clearDisplay();

@@ -92,6 +92,8 @@ void showbit12number(int number, int xlength, int ylength, int x, int y, uint16_
 
 
 
+
+
 void showbitmapWeek(int number, int xlength, int ylength, int x, int y, uint16_t colorxy){
   String numStr = String(number);
     //showbitmap(weekdata[(int)(0)],xlength,ylength, x, y, colorxy);
@@ -204,7 +206,7 @@ void showbigColon(int x,int y,bool l,uint16_t colorxy){
 
 
  //读取ssid数据
- String read_ssid()                                
+ void read_ssid()                                
  {
  dataType d;
  EEPROM_readAnything(90, d);
