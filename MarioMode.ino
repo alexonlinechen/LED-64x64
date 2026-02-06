@@ -28,16 +28,12 @@ void MarioMode() {
     
     // 畫靜態的小時磚塊 (它不會動，所以畫一次就好)
 
-
     drawMarioSprite(13, 4 , 19, 19, BLOCK);
     drawMarioSprite(32, 4 , 19, 19, BLOCK);
     show_mario_number(H, 7, 12, 14, 10, 0xFFFF);
-    show_mario_number(M, 7, 33, 14, 10, 0xFFFF);
+    show_mario_number(M, 7, 12, 33, 10, 0xFFFF);
     
-    drawMarioSprite(13, 4, 19, 19, BLOCK);
-
-    
-    drawMarioSprite(20, correctY, 16, 26, MARIO);
+    drawMarioSprite(20, 30, 16, 26, MARIO);
     
     m_y = 40.0;    
     prev_m_y = 40.0;
@@ -87,7 +83,7 @@ void MarioMode() {
     }
     if (m_y >= 40.0) { m_y = 40.0; m_jumping = false; }   //地板的限制
     
-    // [修補磚塊背景] 抹掉分鐘磚塊舊軌跡
+    // [修補磚塊背景] 抹掉磚塊舊軌跡
     display.fillRect(13, 0, 38, 23, SKY_COLOR);
     
     // [重繪分鐘磚塊]
