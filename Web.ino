@@ -210,7 +210,7 @@
     display.clearDisplay();   
     Mode = 99;        
     GIFname = server.arg("gifname");
-    display.print(GIFname);
+    //display.print(GIFname);
     playGif();
      }); 
 

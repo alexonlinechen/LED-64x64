@@ -82,5 +82,5 @@ void loop() {
 server.handleClient();   
 SwitchMode();
 TimeCheck();
-display.showBuffer(); 
+//display.showBuffer(); 
 }

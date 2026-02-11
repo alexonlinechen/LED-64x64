@@ -1,144 +1,198 @@
 #include "Mario.h"
 
 
+// ===================== 內部狀態 =====================
 
-static float m_y = 40.0;      
 static float prev_m_y = 40.0;    //虛擬的基準線
-static float m_vy = 0.0;     
-static bool m_jumping = false; 
-static int m_offsetY = 0;        
-static int last_min_shown = -1;  
-static int currentHero = 0; // 0 代表 Mario, 1 代表 Yoshi
+// 角色動態
+static float m_y = 40.0;           // 角色基準 Y（浮點讓跳躍更平滑）
+static float m_vy = 0.0f;
+static bool  m_jumping = false;
 
-void MarioMode() {
-  // --- 1. 只有第一次進入時畫完整的背景 (Static Layer) ---
-  if (ModefirstRun) {
+static bool  block_move = true;
+
+static int last_min_shown = -1;
+
+// 角色切換（0=Mario,1=Yoshi,2=Mushroom,3=Cloud）
+static int currentHero = 0;
+
+// 上一幀主角資訊：用 sprite 遮罩擦除，避免整塊 fillRect 閃爍
+static int lastHeroX = 20, lastHeroY = 30, lastHeroW = 25, lastHeroH = 30;
+static const unsigned short* lastHeroSprite = nullptr;
+static int last_offsetY = 0;
+
+
+// ===================== 基本繪圖：畫 sprite（透明=SKY_COLOR 不畫） =====================
+static inline void drawMarioSprite(int x, int y, int w, int h, const unsigned short* data) {
+  if (!data) return;
+  for (int i = 0; i < h; i++) {
+    for (int j = 0; j < w; j++) {
+      uint16_t color = pgm_read_word(&(data[i * w + j]));
+      if (color != SKY_COLOR) {
+        display.drawPixel(x + j, y + i, color);
+      }
+    }
+  }
+}
+
+// 用 sprite 遮罩擦除：把「非 SKY」像素擦回 SKY_COLOR（避免整塊挖空）
+static inline void eraseMarioSprite(int x, int y, int w, int h, const unsigned short* data) {
+  if (!data) return;
+  for (int i = 0; i < h; i++) {
+    for (int j = 0; j < w; j++) {
+      uint16_t color = pgm_read_word(&(data[i * w + j]));
+      if (color != SKY_COLOR) {
+        display.drawPixel(x + j, y + i, SKY_COLOR);
+      }
+    }
+  }
+}
+
+
+// ===================== 初始化 =====================
+static void MarioInit() {
+
+if (ModefirstRun) {
+  // 清成天空色（只做一次）
+  display.fillRect(0, 0, 64, 64, SKY_COLOR);
+
     display.fillScreen(SKY_COLOR);
     Serial.println("Mario 初始");
-
-    
+  
     // 畫背景 (這些只畫一次，之後除非被覆蓋否則不重畫)
-    drawMarioSprite(0, 34, 20, 22, HILL);   
+    drawMarioSprite(0, 38, 20, 22, HILL);   
     drawMarioSprite(0, 21, 13, 12, CLOUD1); 
     drawMarioSprite(51, 7, 13, 12, CLOUD2); 
-    drawMarioSprite(43, 47, 21, 9, BUSH);   
+    drawMarioSprite(43, 51, 21, 9, BUSH);   
     for(int x = 0; x < 64; x += 8) {
-      drawMarioSprite(x, 56, 8, 8, GROUND); 
+      drawMarioSprite(x, 60, 8, 8, GROUND); 
     }
-    
+
     // 畫靜態的小時磚塊 (它不會動，所以畫一次就好)
 
     drawMarioSprite(13, 4 , 19, 19, BLOCK);
     drawMarioSprite(32, 4 , 19, 19, BLOCK);
-    show_mario_number(H, 7, 12, 14, 10, 0xFFFF);
-    show_mario_number(M, 7, 12, 33, 10, 0xFFFF);
-    
-    drawMarioSprite(20, 30, 16, 26, MARIO);
-    
+    show_mario_number(H, 7, 12, 14, 6, 0xF800);
+    show_mario_number(M, 7, 12, 33, 6, 0xF800);
+
+  // 畫初始主角
+  drawMarioSprite(23, 34, 16, 26, MARIO);
+
     m_y = 40.0;    
     prev_m_y = 40.0;
     GetTime();
     last_min_shown = M; 
     ModefirstRun = false;
-  }
 
-  GetTime(); 
- 
-/*
-  M = M+1 ;
-  H = H+1 ;
-  Serial.println(M);
-  if (M>=99) M = 5 ; 
-  if (H>=99) H = 5 ; 
-*/
-  
-  delay(80);
-  
-  // --- 2. 邏輯處理 (跳躍判斷) ---
-  if (M != last_min_shown && !m_jumping) {
-    m_jumping = true;
-    m_vy = -3.5;   //  -3.5 數值越低 會跳得比較低
-
-    // 隨機切換主角：產生 0 或 1
-    currentHero = random(0, 2);
-  // currentHero = 0 ;
-  }
-
-  // --- 3. 動態更新層 (Dynamic Layer) ---
-  if (m_jumping || m_offsetY != 0) {
-    
-// [抹除背景]
-      display.fillRect(20, (int)prev_m_y - 14, 25, 30, SKY_COLOR);
-    
-
- 
-    
-    // 物理計算
-    m_y += m_vy;
-    m_vy += 0.45; 
-    
-    if (m_vy < 0 &&(m_y - 10) <= 23) {    //碰撞偵測：撞擊磚塊
-      m_offsetY = -4;        
-      last_min_shown = M;    
-    }
-    if (m_y >= 40.0) { m_y = 40.0; m_jumping = false; }   //地板的限制
-    
-    // [修補磚塊背景] 抹掉磚塊舊軌跡
-    display.fillRect(13, 0, 38, 23, SKY_COLOR);
-    
-    // [重繪分鐘磚塊]
-    drawMarioSprite(13, 4 + m_offsetY, 19, 19, BLOCK);
-    drawMarioSprite(32, 4 + m_offsetY, 19, 19, BLOCK);
-    show_mario_number(last_min_shown, 7, 12, 33, 6 + m_offsetY, 0xFFFF);
-    show_mario_number(H, 7, 12, 14, 6 + m_offsetY, 0xFFFF);
-
-
-    
-    if (m_offsetY < 0) m_offsetY += 1;
-
-// [重繪主角：Mario 或 Yoshi]
-if (currentHero == 0) {
-    // 16x26 的 Mario 對齊腳部 (26-16 = 10)
-    int correctY = (int)m_y - 10; 
-    if (m_jumping) {
-        drawMarioSprite(23, correctY, 16, 26, MARIO_JUMP);
-    } else {
-        drawMarioSprite(20, correctY, 16, 26, MARIO);
-    }
-} else {
-      // 繪製 Yoshi (20x30)
-      // 腳部對齊：Yoshi 比 Mario 高 14px (30-16)，所以 Y 座標要減 14
-      int yoshiY = (int)m_y - 14; 
-      drawMarioSprite(20, yoshiY, 25, 30, YOSHI); 
-    }
-    
-    prev_m_y = m_y;
-  }/* else {
-    // 當一切靜止時，只畫靜止狀態的瑪利歐 (維持畫面不消失)
-    drawMarioSprite(23, 40, 13, 16, MARIO_IDLE);
-    // 靜止時的分鐘磚塊
-    drawMarioSprite(32, 4, 19, 19, BLOCK);
-    show_mario_number(last_min_shown, 7, 12, 33, 6, 0xFFFF);
-    show_mario_number(H, 7, 12, 14, 6, 0xFFFF);
-  }   */
-}
-
-
-
-
-
-// --- 繪圖函數：支援動態寬高 ---
-void drawMarioSprite(int x, int y, int w, int h, const unsigned short* data) {
-  if (data == NULL) return;
-  for (int i = 0; i < h; i++) {
-    for (int j = 0; j < w; j++) {
-      uint16_t color = pgm_read_word(&(data[i * w + j]));
-
-      // 修改重點：只跳過背景色 (SKY_COLOR)，但一定要畫出黑色 (0x0000)
-      // 如果你的 assets.h 裡定義了 _MASK，也可以用 _MASK
-      if (color != SKY_COLOR) { 
-        display.drawPixel(x + j, y + i, color);
+    display.showBuffer();
       }
     }
+
+
+// ===================== 主模式：每次呼叫推進動畫一小步 =====================
+void MarioMode() {
+  MarioInit();
+
+  GetTime(); 
+
+  delay(80); //畫面更新延遲
+  
+  // ---- 觸發跳躍----
+
+  if (M != last_min_shown && !m_jumping) {
+
+    currentHero = random(0, 4);
+
+    display.fillRect(20, (int)prev_m_y - 14, 25, 34, SKY_COLOR);
+    if (currentHero == 0) drawMarioSprite(23, 34, 16, 26, MARIO); 
+    if (currentHero == 1) drawMarioSprite(20, 30, 25, 30, YOSHI);
+    if (currentHero == 2) drawMarioSprite(23, 30, 20, 30, MUSHROOM); 
+    if (currentHero == 3) drawMarioSprite(20, 30, 25, 30, CLOUD);    
+    delay(10000);
+    
+    m_jumping = true;
+    m_vy = -3.5;  // 起跳速度數值越低 會跳得比較低
+    
   }
+
+  // ---- 擬真跳躍物理----
+  if (m_jumping) {
+    
+   m_y += m_vy;
+   m_vy += 0.45; 
+
+    if (block_move && lastHeroY  < 20) {    //碰撞偵測：撞擊磚塊
+     
+    //Serial.println("碰撞");
+    display.fillRect(13, 13, 38, 10, SKY_COLOR);   
+    drawMarioSprite(13, -4 , 19, 19, BLOCK);
+    drawMarioSprite(32, -4 , 19, 19, BLOCK);
+    block_move = false ;
+    }
+
+    
+
+    // 落地
+    if (m_y >= 40.0f) {
+      Serial.println("落地");
+      m_y = 40.0f;
+      m_jumping = false;
+    display.fillRect(13, 0, 38, 4, SKY_COLOR);
+    drawMarioSprite(13, 4 , 19, 19, BLOCK);
+    drawMarioSprite(32, 4 , 19, 19, BLOCK);
+    show_mario_number(H, 7, 12, 14, 6, 0xF800);
+    show_mario_number(M, 7, 12, 33, 6, 0xF800);
+    block_move = true ;
+    }
+    
+
+
+
+  // ---- 先擦除上一幀主角（用 sprite 遮罩擦，避免整塊 fillRect 閃）----
+  eraseMarioSprite(lastHeroX, lastHeroY, lastHeroW, lastHeroH, lastHeroSprite);
+
+
+  // ---- 決定本幀主角 sprite ----
+  int heroX = 20, heroY = (int)m_y - 10, heroW = 25, heroH = 30;
+  const unsigned short* heroSprite = nullptr;
+
+  if (currentHero == 0) { // Mario 16x26
+    heroX = 23;
+    heroW = 16; heroH = 26;
+    heroY = (int)m_y - 6;
+    heroSprite = (m_jumping ? MARIO_JUMP : MARIO);
+  }
+  else if (currentHero == 1) { // Yoshi 25x30
+    heroX = 20;
+    heroW = 25; heroH = 30;
+    heroY = (int)m_y - 10;
+    heroSprite = (m_jumping ? YOSHI_JUMP : YOSHI);
+  }
+  else if (currentHero == 2) { // Mushroom 20x30
+    heroX = 23;
+    heroW = 20; heroH = 30;
+    heroY = (int)m_y - 10;
+    heroSprite = MUSHROOM;
+  }
+  else { // Cloud 25x30
+    heroX = 20;
+    heroW = 25; heroH = 30;
+    heroY = (int)m_y - 10;
+    heroSprite = CLOUD;
+  }
+
+  // ---- 畫本幀主角 ----
+  drawMarioSprite(heroX, heroY, heroW, heroH, heroSprite);
+
+  // ---- 記錄本幀供下一幀擦除 ----
+  lastHeroX = heroX; lastHeroY = heroY;
+  lastHeroW = heroW; lastHeroH = heroH;
+  lastHeroSprite = heroSprite;
+
+  // ---- 一幀結束才 showBuffer（避免看到中間狀態）----
+  last_min_shown = M; 
+  display.showBuffer();
+
+    }
+    
 }

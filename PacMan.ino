@@ -1,22 +1,25 @@
 // =====================================================
 // 圖形數據 (Sprite Data)
 // =====================================================
+// ESP8266：把大型常數表放到 Flash，避免佔用 RAM
+#include <pgmspace.h>
+
 // Pac-Man 張嘴圖案 (0=透, 1=身)
-const byte pacman2[4][4] = {
+const uint8_t PROGMEM pacman2[4][4] = {
   {0,1,1,1},
   {1,1,0,0},
   {1,1,0,0},
   {0,1,1,1}
 };
 // Pac-Man 閉嘴圖案
-const byte pacmanClosed[4][4] = {
+const uint8_t PROGMEM pacmanClosed[4][4] = {
   {0,1,1,0},
   {1,1,1,1},
   {1,1,1,1},
   {0,1,1,0}
 };
 // 鬼的圖案 (2=眼睛)
-const byte ghost1[4][4] = {
+const uint8_t PROGMEM ghost1[4][4] = {
   {0,1,1,0},
   {1,2,2,1},
   {1,1,1,1},
@@ -27,7 +30,7 @@ const byte ghost1[4][4] = {
 // 地圖數據 (Map Data)
 // 0=路, 1=牆, 2=鬼屋入口(視覺上也是空地)
 // =====================================================
-const byte mazeC1[16][16] = {
+const uint8_t PROGMEM mazeC1[16][16] = {
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
   {1,0,0,0,1,1,0,0,0,0,1,1,0,0,0,1},
   {1,0,1,0,0,0,0,1,1,0,0,0,0,1,0,1},
@@ -45,7 +48,7 @@ const byte mazeC1[16][16] = {
   {1,0,0,0,1,1,0,0,0,0,1,1,0,0,0,1},
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
-const byte mazeR1[16][16] = {
+const uint8_t PROGMEM mazeR1[16][16] = {
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
   {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
   {1,0,1,1,1,1,1,0,0,1,1,1,1,1,0,1},
@@ -63,7 +66,7 @@ const byte mazeR1[16][16] = {
   {1,0,0,0,1,1,1,0,0,1,1,1,0,0,0,1},
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
-const byte mazeL1[16][16] = {
+const uint8_t PROGMEM mazeL1[16][16] = {
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
   {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
   {1,0,1,1,1,1,1,1,0,1,1,1,1,1,0,1},
@@ -87,10 +90,11 @@ const byte mazeL1[16][16] = {
 // =====================================================
 enum MapId : uint8_t { MAP_L1, MAP_C1, MAP_R1 };
 static MapId curMapId = MAP_C1;
-static const byte (*curMaze)[16] = mazeC1; // 指向當前使用的地圖
+// 目前地圖改用 PROGMEM 讀取，不再用指標直接存取
 
-// 豆子系統
-bool hasDot[16][16];
+// 豆子系統：用 16x16 bitset 取代 bool[16][16]，大幅減少 RAM
+// dotRowBits[y] 的第 x bit = 1 代表該格有豆子
+static uint16_t dotRowBits[16];
 unsigned long dotsEatenTime = 0;
 bool allDotsEaten = false;
 
@@ -123,11 +127,41 @@ const uint8_t GHOST_TURN_CHANCE = 30; // 鬼在路口轉彎的機率 (%)
 static inline void setMazeById(MapId id);
 
 // =====================================================
+// PROGMEM 地圖/豆子存取工具
+// =====================================================
+static inline uint8_t mazeCell(int x, int y) {
+  // 0=路, 1=牆, 2=鬼屋入口(視覺上也是空地)
+  if ((uint8_t)x > 15 || (uint8_t)y > 15) return 1; // 出界視為牆
+
+  const uint8_t* base = nullptr;
+  switch (curMapId) {
+    case MAP_L1: base = &mazeL1[0][0]; break;
+    case MAP_R1: base = &mazeR1[0][0]; break;
+    case MAP_C1:
+    default:     base = &mazeC1[0][0]; break;
+  }
+  return pgm_read_byte(base + (y * 16) + x);
+}
+
+static inline bool dotGet(int x, int y) {
+  if ((uint8_t)x > 15 || (uint8_t)y > 15) return false;
+  return (dotRowBits[y] >> x) & 0x01;
+}
+
+static inline void dotSet(int x, int y, bool v) {
+  if ((uint8_t)x > 15 || (uint8_t)y > 15) return;
+  const uint16_t mask = (uint16_t)1u << x;
+  if (v) dotRowBits[y] |= mask;
+  else   dotRowBits[y] &= (uint16_t)~mask;
+}
+
+// =====================================================
 // 工具函式：判斷是否可走 (0 為路)
 // =====================================================
 static inline bool isWalkableCell(int x, int y) {
   if (x < 0 || x > 15 || y < 0 || y > 15) return false;
-  return (curMaze[y][x] == 0);
+  // 2(鬼屋入口) 在本遊戲視覺上是空地，但不走進去，所以只允許 0
+  return (mazeCell(x, y) == 0);
 }
 
 // =====================================================
@@ -135,7 +169,7 @@ static inline bool isWalkableCell(int x, int y) {
 // =====================================================
 static inline bool isWall(int x, int y) {
   if (x < 0 || x > 15 || y < 0 || y > 15) return false;
-  return (curMaze[y][x] == 1);
+  return (mazeCell(x, y) == 1);
 }
 
 // =====================================================
@@ -158,13 +192,13 @@ void drawFullMaze() {
       if (!isWall(x + 1, y)) display.drawLine(px + 3, py,     px + 3, py + 3, wallColor); // 右
 
       // 2. 繪製圓角效果 (對角修補)
-      if (isWall(x + 1, y) && isWall(x, y + 1) && !isWall(x + 1, y + 1)) 
+      if (isWall(x + 1, y) && isWall(x, y + 1) && !isWall(x + 1, y + 1))
         display.drawPixel(px + 3, py + 3, wallColor);
-      if (isWall(x + 1, y) && isWall(x, y - 1) && !isWall(x + 1, y - 1)) 
+      if (isWall(x + 1, y) && isWall(x, y - 1) && !isWall(x + 1, y - 1))
         display.drawPixel(px + 3, py, wallColor);
-      if (isWall(x - 1, y) && isWall(x, y + 1) && !isWall(x - 1, y + 1)) 
+      if (isWall(x - 1, y) && isWall(x, y + 1) && !isWall(x - 1, y + 1))
         display.drawPixel(px, py + 3, wallColor);
-      if (isWall(x - 1, y) && isWall(x, y - 1) && !isWall(x - 1, y - 1)) 
+      if (isWall(x - 1, y) && isWall(x, y - 1) && !isWall(x - 1, y - 1))
         display.drawPixel(px, py, wallColor);
     }
   }
@@ -175,13 +209,13 @@ void drawFullMaze() {
 // =====================================================
 void resetDots() {
   for (int y = 0; y < 16; y++) {
+    dotRowBits[y] = 0;
     for (int x = 0; x < 16; x++) {
       // 只有在空地 (0) 且不在傳送門附近 (x=0 或 x=15) 才放豆子
-      if (curMaze[y][x] == 0 && x != 0 && x != 15) {
-        hasDot[y][x] = true;
+      const bool put = (mazeCell(x, y) == 0) && (x != 0) && (x != 15);
+      dotSet(x, y, put);
+      if (put) {
         display.drawPixel(x * 4 + 2, y * 4 + 2, display.color565(150, 150, 150));
-      } else {
-        hasDot[y][x] = false;
       }
     }
   }
@@ -190,10 +224,7 @@ void resetDots() {
 void checkDotsStatus() {
   bool found = false;
   for (int y = 0; y < 16; y++) {
-    for (int x = 0; x < 16; x++) {
-      if (hasDot[y][x]) { found = true; break; }
-    }
-    if (found) break;
+    if (dotRowBits[y] != 0) { found = true; break; }
   }
   if (!found && !allDotsEaten) {
     allDotsEaten = true;
@@ -207,10 +238,7 @@ void checkDotsStatus() {
 // =====================================================
 static inline void setMazeById(MapId id) {
   curMapId = id;
-  if (id == MAP_C1)      curMaze = mazeC1;
-  else if (id == MAP_L1) curMaze = mazeL1;
-  else                   curMaze = mazeR1;
-  
+
   display.fillScreen(0);
   drawFullMaze();
   resetDots();
@@ -238,7 +266,7 @@ static int countChoicesNoBack(int x, int y, int curDir) {
 static int chooseTurnAtJunction(int x, int y, int curDir, uint8_t chancePct) {
   int backDir = (curDir + 2) & 3;
   int opts[4], n = 0;
-  
+
   // 找出所有可走方向
   for (int dir = 0; dir < 4; dir++) {
     if (dir == backDir) continue;
@@ -253,7 +281,7 @@ static int chooseTurnAtJunction(int x, int y, int curDir, uint8_t chancePct) {
   for (int i = 0; i < n; i++) {
     if (opts[i] != curDir) turnOpts[m++] = opts[i];
   }
-  
+
   if (m > 0) return turnOpts[random(m)]; // 隨機選一個轉彎方向
   return curDir;
 }
@@ -288,7 +316,7 @@ static inline void drawGhostCell(int cellX, int cellY) {
 
   for (int y = 0; y < 4; y++) {
     for (int x = 0; x < 4; x++) {
-      byte v = ghost1[y][x];
+      uint8_t v = pgm_read_byte(&ghost1[y][x]);
       if (v == 0) continue;
       display.drawPixel(px + x, py + y, (v == 2) ? eye : body);
     }
@@ -356,23 +384,27 @@ static inline void drawClockOverlay(bool forceRedrawNumbers) {
 // =====================================================
 // 繪圖：Pacman Sprite 處理 (旋轉)
 // =====================================================
-static inline byte spriteAt4(const byte spr[4][4], int sx, int sy, int dir) {
+static inline uint8_t sprRead4(const uint8_t spr[4][4], int x, int y) {
+  return pgm_read_byte(&spr[y][x]);
+}
+
+static inline uint8_t spriteAt4(const uint8_t spr[4][4], int sx, int sy, int dir) {
   switch (dir & 3) {
-    case 0:  return spr[sy][sx];       // 右
-    case 2:  return spr[sy][3 - sx];   // 左 (水平翻轉)
-    case 1:  return spr[3 - sx][sy];   // 下
-    case 3:  return spr[sx][3 - sy];   // 上
+    case 0:  return sprRead4(spr, sx, sy);            // 右
+    case 2:  return sprRead4(spr, 3 - sx, sy);        // 左 (水平翻轉)
+    case 1:  return sprRead4(spr, sy, 3 - sx);        // 下
+    case 3:  return sprRead4(spr, 3 - sy, sx);        // 上
   }
   return 0;
 }
 
-static inline void drawSprite4x4Cell(int cellX, int cellY, const byte spr[4][4], int dir, uint16_t bodyColor) {
+static inline void drawSprite4x4Cell(int cellX, int cellY, const uint8_t spr[4][4], int dir, uint16_t bodyColor) {
   int px = cellX * 4;
   int py = cellY * 4;
   for (int sy = 0; sy < 4; sy++) {
     for (int sx = 0; sx < 4; sx++) {
-      byte v = spriteAt4(spr, sx, sy, dir);
-      if (v == 0) continue; 
+      uint8_t v = spriteAt4(spr, sx, sy, dir);
+      if (v == 0) continue;
       display.drawPixel(px + sx, py + sy, bodyColor);
     }
   }
@@ -380,7 +412,7 @@ static inline void drawSprite4x4Cell(int cellX, int cellY, const byte spr[4][4],
 
 static inline void drawPacmanSprite(int cellX, int cellY, int dir, bool invincible, bool mouthOpen) {
   uint16_t body = invincible ? display.color565(255, 255, 255) : display.color565(255, 255, 0);
-  const byte (*spr)[4] = mouthOpen ? pacman2 : pacmanClosed;
+  const uint8_t (*spr)[4] = mouthOpen ? pacman2 : pacmanClosed;
   drawSprite4x4Cell(cellX, cellY, spr, dir, body);
 }
 
@@ -394,7 +426,7 @@ void PacmanMode() {
   static unsigned long lastUpdate = 0;
   static int mouthFrame = 0;
   static int lastM = -1;
-  
+
   // 碰撞偵測用的前一幀位置
   static int prevPX = -1, prevPY = -1;
   static int prevGX = -1, prevGY = -1;
@@ -406,9 +438,9 @@ void PacmanMode() {
   if (gameWin || gameOver) {
     if (gameWin) drawStatusText(true);
     else         drawStatusText(false);
-    
+
     delay(5000); // 等待 5 秒
-    
+
     // 重置遊戲狀態
     gameWin = false;
     gameOver = false;
@@ -440,7 +472,7 @@ void PacmanMode() {
   if (allDotsEaten && (millis() - dotsEatenTime > 60000)) {
     resetDots();
     allDotsEaten = false;
-    powerBlockActive = true; 
+    powerBlockActive = true;
   }
 
   // 遊戲速度控制 (每 200ms 更新一次畫面)
@@ -490,8 +522,8 @@ void PacmanMode() {
     pDir = chooseDirWhenBlocked(pX, pY, pDir);
     nextPX = pX + dx[pDir];
     nextPY = pY + dy[pDir];
-    if (isWalkableCell(nextPX, nextPY)) { 
-      pX = nextPX; 
+    if (isWalkableCell(nextPX, nextPY)) {
+      pX = nextPX;
       pY = nextPY;
     }
   }
@@ -505,8 +537,8 @@ void PacmanMode() {
   }
 
   // 吃豆子
-  if (hasDot[pY][pX]) {
-    hasDot[pY][pX] = false;
+  if (dotGet(pX, pY)) {
+    dotSet(pX, pY, false);
     checkDotsStatus();
   }
 
@@ -540,8 +572,8 @@ void PacmanMode() {
       gHDir = chooseDirWhenBlocked(gHX, gHY, gHDir);
       nextGX = gHX + dx[gHDir];
       nextGY = gHY + dy[gHDir];
-      if (isWalkableCell(nextGX, nextGY)) { 
-        gHX = nextGX; 
+      if (isWalkableCell(nextGX, nextGY)) {
+        gHX = nextGX;
         gHY = nextGY;
       }
     }
@@ -551,7 +583,7 @@ void PacmanMode() {
     // 碰撞偵測 (Pacman vs Ghost)
     bool sameCell  = (gHX == pX && gHY == pY); // 同格
     bool crossSwap = (prevPX == gHX && prevPY == gHY && prevGX == pX && prevGY == pY); // 交換位置(擦身)
-    
+
     if (sameCell || crossSwap) {
       if (invincible) {
         gameWin = true;
@@ -570,7 +602,5 @@ void PacmanMode() {
 
   // 時間顯示
   GetTime();
-
- 
   drawClockOverlay(false);
 }

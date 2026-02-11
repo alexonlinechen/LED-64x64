@@ -120,48 +120,56 @@ public:
   setOne(3, d3, 49, force);  // 第四個數字 (分鐘個位)，起始位 49
   }
 
-  bool drawFrame(int xStart,int yFinish,bool showColon){
-    bool allDone=true;
-    const int yStart = yFinish - (16*scale);
-    const int clearH = (16+5)*scale;
+bool drawFrame(int xStart, int yFinish, bool showColon){
+    bool allDone = true;
+    const int yStart = yFinish - (16 * scale);
+    // 移除這裡原本的 clearH 定義與 fillRect 呼叫
 
-    for(uint8_t pos=0;pos<4;pos++){
-      if(st[pos].num<0) continue;
-      uint8_t num=(uint8_t)st[pos].num;
-      uint8_t total=pgm_read_byte(&blocksPerNumber[num]);
+    for(uint8_t pos = 0; pos < 4; pos++){
+      if(st[pos].num < 0) continue;
+      uint8_t num = (uint8_t)st[pos].num;
+      uint8_t total = pgm_read_byte(&blocksPerNumber[num]);
 
       if(st[pos].blockIndex < total){
-        allDone=false;
-        gfx->fillRect(xStart + st[pos].xShift, yStart - (4*scale), 15*scale, clearH, 0);
+        allDone = false;
 
         fall_instr cur; 
         memcpy_P(&cur, getNumTable(num) + st[pos].blockIndex, sizeof(fall_instr));
-        uint16_t col = colors[cur.color % 9];
 
+        // --- 優化關鍵：先用黑色畫掉「上一幀」的位置 ---
+        if(st[pos].fallIndex > 0) {
+          drawShape(cur.blocktype, cur.num_rot, 0x0000, // 0x0000 是黑色
+                    xStart + st[pos].xShift + (cur.x_pos * scale),
+                    yStart + ((st[pos].fallIndex - 1) * scale));
+        }
+
+        // --- 緊接著畫出「這一幀」的彩色位置 ---
+        uint16_t col = colors[cur.color % 9];
         drawShape(cur.blocktype, cur.num_rot, col,
-                  xStart + st[pos].xShift + (cur.x_pos*scale),
-                  yStart + (st[pos].fallIndex*scale));
+                  xStart + st[pos].xShift + (cur.x_pos * scale),
+                  yStart + (st[pos].fallIndex * scale));
 
         st[pos].fallIndex++;
         if(st[pos].fallIndex > cur.y_stop){
-          st[pos].fallIndex=0;
+          st[pos].fallIndex = 0;
           st[pos].blockIndex++;
         }
       }
 
-      for(uint8_t i=0;i<st[pos].blockIndex;i++){
+      // 繪製已經固定底部的方塊
+      for(uint8_t i = 0; i < st[pos].blockIndex; i++){
         fall_instr f; 
         memcpy_P(&f, getNumTable(num) + i, sizeof(fall_instr));
         uint16_t col = colors[f.color % 9];
         drawShape(f.blocktype, f.num_rot, col,
-                  xStart + st[pos].xShift + (f.x_pos*scale),
-                  yStart + (f.y_stop*scale));
+                  xStart + st[pos].xShift + (f.x_pos * scale),
+                  yStart + (f.y_stop * scale));
       }
     }
 
-    if(showColon) drawColon(xStart,yFinish);
+    if(showColon) drawColon(xStart, yFinish);
     return allDone;
-  }
+}
 
   uint8_t scale=2;
 
