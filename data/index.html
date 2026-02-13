@@ -79,8 +79,23 @@ html{font-family:sans-serif;-webkit-text-size-adjust:100%}body{margin:0}body::af
 								<input name="radio-mode" onclick="gifbigclock()" type="radio">
 							</div>
 
-														<div class="mui-input-row mui-radio">
-								<label>(5) 隨機模式</label>
+							<div class="mui-input-row mui-radio">
+								<label>(5) PacMan小精靈 時鐘</label>
+								<input name="radio-mode" onclick="Pacman()" type="radio">
+							</div>
+
+							<div class="mui-input-row mui-radio">
+								<label>(6) 俄羅斯方塊 時鐘</label>
+								<input name="radio-mode" onclick="Tetrisclock()" type="radio">
+							</div>
+
+							<div class="mui-input-row mui-radio">
+								<label>(6) 瑪利歐 時鐘</label>
+								<input name="radio-mode" onclick="Marioclock()" type="radio">
+							</div>
+
+							<div class="mui-input-row mui-radio">
+								<label>(7) 隨機模式</label>
 								<input name="radio-mode" onclick="randommode()" type="radio">
 							</div>
 							
@@ -692,6 +707,22 @@ function weekclock() {
 function gifclock() {
     $.post("/gifclock");
 }
+
+
+
+function Pacman() {
+    $.post("/pacmanmode");
+}
+
+
+function Tetrisclock() {
+    $.post("/Tetrisclock");
+}
+
+function Marioclock() {
+    $.post("/Marioclock");
+}
+
 
 
 function gifbigclock() {
