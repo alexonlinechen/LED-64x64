@@ -31,6 +31,7 @@ void display_updater(){
 
 void setup() {
 
+  randomSeed(analogRead(A0));
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
     brightnessNow = EEPROM.read(EEPROM_BRIGHTNESS);

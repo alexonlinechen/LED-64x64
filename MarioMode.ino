@@ -11,7 +11,7 @@ static bool  m_jumping = false;
 
 static bool  block_move = true;
 
-static int last_min_shown = -1;
+
 
 // 角色切換（0=Mario,1=Yoshi,2=Mushroom,3=Cloud）
 static int currentHero = 0;
@@ -101,13 +101,15 @@ void MarioMode() {
 
   if (M != last_min_shown && !m_jumping) {
 
-    currentHero = random(0, 4);
+    currentHero = random(0, 6);
 
     display.fillRect(20, (int)prev_m_y - 14, 25, 34, SKY_COLOR);
     if (currentHero == 0) drawMarioSprite(23, 34, 16, 26, MARIO); 
     if (currentHero == 1) drawMarioSprite(20, 30, 25, 30, YOSHI);
     if (currentHero == 2) drawMarioSprite(23, 30, 20, 30, MUSHROOM); 
     if (currentHero == 3) drawMarioSprite(20, 30, 25, 30, CLOUD);    
+    if (currentHero == 4) drawMarioSprite(20, 35, 25, 25, GHOST); 
+    if (currentHero == 5) drawMarioSprite(20, 34, 19, 26, BABY);
     delay(10000);
     
     m_jumping = true;
@@ -174,11 +176,26 @@ void MarioMode() {
     heroY = (int)m_y - 10;
     heroSprite = MUSHROOM;
   }
-  else { // Cloud 25x30
+  else if (currentHero == 3){ // Cloud 25x30
     heroX = 20;
     heroW = 25; heroH = 30;
     heroY = (int)m_y - 10;
     heroSprite = CLOUD;
+  }
+
+  else if (currentHero == 4) { // Ghost   25*25
+    heroX = 20;
+    heroW = 25; heroH = 25;
+    heroY = (int)m_y - 5;
+    heroSprite = (m_jumping ? GHOST_JUMP : GHOST);
+  }
+
+
+  if (currentHero == 5) { // baby 19x26
+    heroX = 20;
+    heroW = 19; heroH = 26;
+    heroY = (int)m_y - 6;
+    heroSprite = (m_jumping ? BABY_JUMP : BABY);
   }
 
   // ---- 畫本幀主角 ----

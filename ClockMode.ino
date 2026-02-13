@@ -26,8 +26,12 @@ void SwitchMode(){
       case 7:
             MarioMode();                            
       break;  
-      
+
       case 8:
+            LifeMode();                         
+      break;  
+           
+      case 9:
            ClockMode5();  
       break;          
 
@@ -289,6 +293,14 @@ void ClockMode5(){
 
       case 6:              
            TetrisMode(); 
+      break;  
+
+      case 7:
+            MarioMode();                            
+      break;  
+
+      case 8:
+            LifeMode();                         
       break;  
                           
       default:

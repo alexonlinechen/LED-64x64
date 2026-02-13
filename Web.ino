@@ -46,7 +46,7 @@
     server.send(200, "text/plain", "OK");
     });
 
-     server.on("/Marioclock", HTTP_POST, []() {  
+    server.on("/Marioclock", HTTP_POST, []() {  
     display.clearDisplay();   
     ModefirstRun = true;  
     Mode = 7;
@@ -54,9 +54,18 @@
     server.send(200, "text/plain", "OK");
     });  
 
+    server.on("/Cellclock", HTTP_POST, []() {  
+    display.clearDisplay();   
+    ModefirstRun = true;  
+    Mode = 8;
+    Serial.println(F("生命遊戲模式")); 
+    server.send(200, "text/plain", "OK");
+    });  
+
+
     server.on("/randommode", HTTP_POST, []() {   
     display.clearDisplay();  
-    Mode = 8; 
+    Mode = 9; 
     Serial.println(F("隨機模式")); 
     }); 
 

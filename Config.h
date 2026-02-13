@@ -41,6 +41,7 @@ int hueb = 180;
 
 int randomMode = 1 ;
 int lastRandomMode = -1; // 宣告在全域，用來記錄上一次的模式
+static int last_min_shown = -1;
 
 //固定顯示 時間開始/結束參數
 int start_H = 0;
