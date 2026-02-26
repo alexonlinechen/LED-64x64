@@ -27,11 +27,19 @@ void SwitchMode(){
             MarioMode();                            
       break;  
 
-      case 8:
-            LifeMode();                         
+      case 8:   
+            LifeMode();                       
       break;  
+
+      case 9:          
+            BubbleMode();                        
+      break;
+
+      case 10:        
+              PokemonMode();                       
+      break;
            
-      case 9:
+      case 11:
            ClockMode5();  
       break;          
 
@@ -264,7 +272,7 @@ void ClockMode5(){
 
   // 針對pacman模式 初始化
   if (randomMode != lastRandomMode) {
-    if (randomMode == 5) {
+    if (randomMode == 5 || randomMode == 7) {
       ModefirstRun = true; // 只要切換到模式 5，就強制重置初始化標記
     }
     lastRandomMode = randomMode; // 更新紀錄
@@ -302,6 +310,14 @@ void ClockMode5(){
       case 8:
             LifeMode();                         
       break;  
+
+      case 9:
+            BubbleMode();                         
+      break;  
+
+      case 10:
+            PokemonMode();                         
+      break;       
                           
       default:
            ClockMode1();
@@ -310,7 +326,7 @@ void ClockMode5(){
 if ( millis() - randomTime > random_min*60000){    //間隔 - 分鐘顯示時間
 
 
-   randomMode = random(1, 8);
+   randomMode = random(1, 11);
    Serial.print(F("切換隨機模式："));
    Serial.println(randomMode);
    display.clearDisplay();

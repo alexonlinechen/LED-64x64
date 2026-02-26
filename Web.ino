@@ -63,6 +63,24 @@
     });  
 
 
+    server.on("/Bubbleclock", HTTP_POST, []() {  
+    display.clearDisplay();   
+    ModefirstRun = true;  
+    Mode = 9;
+    Serial.println(F("泡泡龍模式")); 
+    server.send(200, "text/plain", "OK");
+    }); 
+
+    server.on("/Pokemonclock", HTTP_POST, []() {  
+    display.clearDisplay();   
+    ModefirstRun = true;  
+    Mode = 10;
+    Serial.println(F("寶可夢 模式")); 
+    server.send(200, "text/plain", "OK");
+    }); 
+
+
+
     server.on("/randommode", HTTP_POST, []() {   
     display.clearDisplay();  
     Mode = 9; 
